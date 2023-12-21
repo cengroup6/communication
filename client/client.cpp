@@ -10,34 +10,51 @@
 using namespace std;
 
 
-int send_message_to_server(request_t req,int client_socket,struct sockaddr_in servaddr){
+request_t parse_requested_data(char* data){
+    if(strncmp(data,"speed",strlen("speed"))==0){
+        return SPEED;
+    }else if(strncmp(data,"rotation",strlen("rotation"))==0){
+        return ROTATION;
+    }else if(strncmp(data,"bpm",strlen("bpm"))==0){
+        return BPM;
+    }else{
+        return INVALID;
+    }
+}
+
+int send_message_to_server(request_t req,int sockfd,struct sockaddr_in servaddr){
     char buffer[1000];
     memset(buffer, 0, sizeof(buffer));
     sprintf(buffer,"%d",req);
-    return sendto(client_socket, buffer, strlen(buffer), 0, (const struct sockaddr*)&servaddr, sizeof(servaddr));
+    return sendto(sockfd, buffer, strlen(buffer), 0, (const struct sockaddr*)&servaddr, sizeof(servaddr));
 }
 
-// Client - server_ip port 
+// Client - <server_ip> <port> <interested_data> 
 int main(int argc, char* argv[]) {
     int port;
     char* server_ip;
-    if (argc < 3) {
-        cerr << "usage: ./client <server_ip> <server_port>" << endl;
+    struct sockaddr_in servaddr;
+    request_t request_for;
+
+    if (argc < 4) {
+        cerr << "usage: ./client <server_ip> <server_port> <data:speed/rotation)/bpm" << endl;
         exit(EXIT_FAILURE);
     }
     server_ip = argv[1];
     port = atoi(argv[2]);
+    request_for = parse_requested_data(argv[3]);
+    
 
     // Create a UDP socket
-    int client_socket = socket(AF_INET, SOCK_DGRAM, 0);
-    if (client_socket < 0) {
+    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd < 0) {
         perror("Error opening client socket");
         exit(EXIT_FAILURE);
     }
 
     // Define the server address and port
-    struct sockaddr_in servaddr;
     memset(&servaddr, 0, sizeof(servaddr));
+    socklen_t len = sizeof(servaddr);
     servaddr.sin_family = AF_INET;
     servaddr.sin_port = htons(port); // Server port
     if (inet_pton(AF_INET, server_ip, &servaddr.sin_addr) <= 0) { //server ip address
@@ -49,28 +66,24 @@ int main(int argc, char* argv[]) {
 
     while (true) {
         //asking for data from server
-        if(send_message_to_server(SPEED,client_socket,servaddr) < 0){
-            std::cerr << "sendto() failed" << std::endl;
+        if(send_message_to_server(request_for,sockfd,servaddr) < 0){
+            std::cerr << "send_message_to_server(sendto) failed" << std::endl;
             exit(EXIT_FAILURE);
         }
 
-
         char buffer[1024];
         memset(buffer, 0, sizeof(buffer));
-        struct sockaddr_in senderAddr;
-        socklen_t len = sizeof(senderAddr);
         // Receive data from the server
-        int n = recvfrom(client_socket, (char *)buffer, sizeof(buffer), 0, (struct sockaddr *)&senderAddr, &len);
-        if (n < 0) {
+        int bytes_received;
+        if((bytes_received = recvfrom(sockfd, (char *)buffer, sizeof(buffer), 0, (struct sockaddr *)&servaddr, &len))<0){
             cerr << "Error in recvfrom" << endl;
             break;
         }
-
-        buffer[n] = '\0';
+        buffer[bytes_received] = '\0';
         cout << "Received: " << buffer << endl;
     }
 
     // Close the socket
-    close(client_socket);
+    close(sockfd);
     return 0;
 }

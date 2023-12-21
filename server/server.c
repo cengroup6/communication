@@ -25,23 +25,26 @@ int get_speed_data(){
     return 100;
 }
 
-int send_message_to_client(request_t req,int server_sock,struct sockaddr_in client_addr,int cliaddr_len){
+int send_message_to_client(request_t req,int sockfd,struct sockaddr_in client_addr,int cliaddr_len){
     char buffer[1024];
     memset(buffer,0,sizeof(buffer));
     if (req == SPEED) {
-        int speed = get_speed_data();
-        snprintf(buffer, sizeof(buffer), "speed: %d", speed);
+        sprintf(buffer,"speed: %d", get_speed_data());
+    }else if(req == ROTATION){
+        sprintf(buffer,"rotation: %d", get_rotation_data());
+    }else if(req == BPM){
+        sprintf(buffer,"bpm: %d", get_bpm_data());
     }else{
         char* init = "invalid request: 404\n";
         strncpy(buffer,init,strlen(init));
         buffer[strlen(buffer)]='\0';
     }
-    return sendto(server_sock, buffer, strlen(buffer), 0, (struct sockaddr *)&client_addr, cliaddr_len);
+    return sendto(sockfd, buffer, strlen(buffer), 0, (struct sockaddr *)&client_addr, cliaddr_len);
 }
 
 //args - ./server ip port 
 int main(int argc,char*argv[],char** envp){
-    int port, serversock, addr_size;
+    int port, sockfd, addr_size;
     struct sockaddr_in server_addr, client_addr;
     char* ip_address; 
 
@@ -55,7 +58,7 @@ int main(int argc,char*argv[],char** envp){
     port = atoi(argv[2]);
 
     //creating server socket
-    if((serversock = socket(AF_INET,SOCK_DGRAM,0)) < 0){
+    if((sockfd = socket(AF_INET,SOCK_DGRAM,0)) < 0){
         perror("Failed to create server socket");
         exit(EXIT_FAILURE);
     }
@@ -74,7 +77,7 @@ int main(int argc,char*argv[],char** envp){
     }
 
     //binding socket with server address
-    if (bind(serversock, (const struct sockaddr*)&server_addr, sizeof(server_addr)) == -1) {
+    if (bind(sockfd, (const struct sockaddr*)&server_addr, sizeof(server_addr)) == -1) {
         perror("server bind failed");
         exit(EXIT_FAILURE);
     }
@@ -87,7 +90,7 @@ int main(int argc,char*argv[],char** envp){
         char buffer_receive[1024];
         memset(buffer_receive,0,sizeof(buffer_receive));
         // Receive messages from clients
-        int len = recvfrom(serversock, buffer_receive, sizeof(buffer_receive), 0, (struct sockaddr *)&client_addr, &cliaddr_len);
+        int len = recvfrom(sockfd, buffer_receive, sizeof(buffer_receive), 0, (struct sockaddr *)&client_addr, &cliaddr_len);
         if (len < 0) {
             perror("recvfrom");
             exit(EXIT_FAILURE);
@@ -97,9 +100,9 @@ int main(int argc,char*argv[],char** envp){
         request_t req = atoi(buffer_receive);
 
         //sending data to client
-        send_message_to_client(req,serversock,client_addr,cliaddr_len);
+        send_message_to_client(req,sockfd,client_addr,cliaddr_len);
     }
 
-    close(serversock);
+    close(sockfd);
     return 0;
 }
