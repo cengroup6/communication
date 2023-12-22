@@ -10,17 +10,17 @@
 using namespace std;
 
 
-request_t parse_requested_data(char* data){
-    if(strncmp(data,"speed",strlen("speed"))==0){
-        return SPEED;
-    }else if(strncmp(data,"rotation",strlen("rotation"))==0){
-        return ROTATION;
-    }else if(strncmp(data,"bpm",strlen("bpm"))==0){
-        return BPM;
-    }else{
-        return INVALID;
-    }
-}
+// request_t parse_requested_data(char* data){
+//     if(strncmp(data,"rmp",strlen("rmp"))==0){
+//         return SPEED;
+//     }else if(strncmp(data,"rotation",strlen("rotation"))==0){
+//         return ROTATION;
+//     }else if(strncmp(data,"bpm",strlen("bpm"))==0){
+//         return BPM;
+//     }else{
+//         return INVALID;
+//     }
+// }
 
 int send_message_to_server(request_t req,int sockfd,struct sockaddr_in servaddr){
     char buffer[1000];
@@ -34,15 +34,13 @@ int main(int argc, char* argv[]) {
     int port;
     char* server_ip;
     struct sockaddr_in servaddr;
-    request_t request_for;
 
-    if (argc < 4) {
-        cerr << "usage: ./client <server_ip> <server_port> <data:speed/rotation)/bpm" << endl;
+    if (argc < 3) {
+        cerr << "usage: ./client <server_ip> <server_port>" << endl;
         exit(EXIT_FAILURE);
     }
     server_ip = argv[1];
     port = atoi(argv[2]);
-    request_for = parse_requested_data(argv[3]);
     
 
     // Create a UDP socket
@@ -66,7 +64,7 @@ int main(int argc, char* argv[]) {
 
     while (true) {
         //asking for data from server
-        if(send_message_to_server(request_for,sockfd,servaddr) < 0){
+        if(send_message_to_server(INIT,sockfd,servaddr) < 0){
             std::cerr << "send_message_to_server(sendto) failed" << std::endl;
             exit(EXIT_FAILURE);
         }
@@ -80,7 +78,7 @@ int main(int argc, char* argv[]) {
             break;
         }
         buffer[bytes_received] = '\0';
-        cout << "Received: " << buffer << endl;
+        cout<< buffer;
     }
 
     // Close the socket

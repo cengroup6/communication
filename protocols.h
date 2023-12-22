@@ -3,10 +3,9 @@
 
 
 typedef enum request{
-    SPEED,
-    ROTATION,
-    BPM,
-    INVALID,
+    INIT,
+    CLOSE
 }request_t;
+
 
 #endif 

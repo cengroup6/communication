@@ -13,32 +13,10 @@
 #include "../protocols.h"
 
 
-int get_rotation_data(){
-    return -1;
-}
-
-int get_bpm_data(){
-    return 60;
-}
-
-int get_speed_data(){
-    return 100;
-}
-
-int send_message_to_client(request_t req,int sockfd,struct sockaddr_in client_addr,int cliaddr_len){
+int send_message_to_client(int sockfd,char* data, struct sockaddr_in client_addr,int cliaddr_len){
     char buffer[1024];
     memset(buffer,0,sizeof(buffer));
-    if (req == SPEED) {
-        sprintf(buffer,"speed: %d", get_speed_data());
-    }else if(req == ROTATION){
-        sprintf(buffer,"rotation: %d", get_rotation_data());
-    }else if(req == BPM){
-        sprintf(buffer,"bpm: %d", get_bpm_data());
-    }else{
-        char* init = "invalid request: 404\n";
-        strncpy(buffer,init,strlen(init));
-        buffer[strlen(buffer)]='\0';
-    }
+    sprintf(buffer,"%s", data);
     return sendto(sockfd, buffer, strlen(buffer), 0, (struct sockaddr *)&client_addr, cliaddr_len);
 }
 
@@ -52,6 +30,14 @@ int main(int argc,char*argv[],char** envp){
         fprintf(stderr,"USAGE:./server <ip> <port>\n");
         exit(1);
     }
+
+    //setting up sensor 
+    int sensorfd = openSerialPort("/dev/ttyUSB0"); // Change to match your port
+    if(sensorfd < 0){
+        perror("failed opening sensor serial port");
+        exit(EXIT_FAILURE);
+    }
+    configureSerialPort(sensorfd);
 
     //parsing ip address and port
     ip_address = argv[1];
@@ -84,25 +70,34 @@ int main(int argc,char*argv[],char** envp){
 
     fprintf(stdout,"server started on %s:%d\n",ip_address,port);
     
-    //keep transmitting sensor data
-  
+
+    char buffer_receive[1024];
+    char sensor_data[1024];
     while (1) {
-        char buffer_receive[1024];
         memset(buffer_receive,0,sizeof(buffer_receive));
-        // Receive messages from clients
-        int len = recvfrom(sockfd, buffer_receive, sizeof(buffer_receive), 0, (struct sockaddr *)&client_addr, &cliaddr_len);
-        if (len < 0) {
+        // Receive messages from clients.
+        int byte_received = recvfrom(sockfd, buffer_receive, sizeof(buffer_receive), 0, (struct sockaddr *)&client_addr, &cliaddr_len);
+        if (byte_received < 0) {
             perror("recvfrom");
-            exit(EXIT_FAILURE);
+            break;
         }
         printf("client:%s:%d\n", inet_ntoa(client_addr.sin_addr),ntohs(client_addr.sin_port));
-        buffer_receive[strlen(buffer_receive)]='\0';
-        request_t req = atoi(buffer_receive);
+        buffer_receive[byte_received]='\0';
+        //should add the client in active client list
 
-        //sending data to client
-        send_message_to_client(req,sockfd,client_addr,cliaddr_len);
+        //read sensor data
+        memset(sensor_data,0,sizeof(sensor_data));
+        int sensor_read_bytes = read(sensorfd, sensor_data, sizeof(sensor_data));
+        if (sensor_read_bytes < 0) {
+            perror("sensor data read failed");
+            break;
+        }
+        sensor_data[sensor_read_bytes]='\0';
+        //sending data to active clients
+        send_message_to_client(sockfd,sensor_data,client_addr,cliaddr_len);
     }
 
+    close(sensorfd);
     close(sockfd);
     return 0;
 }
