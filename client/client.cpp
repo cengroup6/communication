@@ -60,16 +60,19 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    cout << "Listening for data from server..." << endl;
-
-    while (true) {
-        //asking for data from server
+    while(1){
         if(send_message_to_server(INIT,sockfd,servaddr) < 0){
             std::cerr << "send_message_to_server(sendto) failed" << std::endl;
             exit(EXIT_FAILURE);
+        }else{
+            break;
         }
+    }
 
-        char buffer[1024];
+    cout << "Listening for data from server..." << endl;
+    
+    char buffer[1024];
+    while (true) {        
         memset(buffer, 0, sizeof(buffer));
         // Receive data from the server
         int bytes_received;
@@ -80,7 +83,6 @@ int main(int argc, char* argv[]) {
         buffer[bytes_received] = '\0';
         cout<< buffer;
     }
-
     // Close the socket
     close(sockfd);
     return 0;

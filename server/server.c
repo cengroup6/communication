@@ -8,10 +8,55 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
+#include <sys/time.h>
 #include "server_config.h"
 #include "sensors.h"
 #include "../protocols.h"
 
+#define MAX_CLIENT 5
+#define FAILED_MSG_THRESHOLD 4
+
+//globals
+int client_count = 0,sockfd,sensorfd;
+
+struct Client {
+    struct sockaddr_in client_addr;
+    int failed_msg_count;
+    int active; // Indicates if the client slot is active
+} clients[MAX_CLIENT];
+
+
+int add_client(struct sockaddr_in new_client_addr) {
+    // Check if the client already exists
+    for (int i = 0; i < MAX_CLIENT; i++) {
+        if (clients[i].active && memcmp(&clients[i].client_addr, &new_client_addr, sizeof(new_client_addr)) == 0) {
+            return -1; // Client already exists
+        }
+    }
+
+    // Find an empty slot and add the new client
+    for (int i = 0; i < MAX_CLIENT; i++) {
+        if (!clients[i].active) {
+            clients[i].client_addr = new_client_addr;
+            clients[i].active = 1;
+            clients[i].failed_msg_count = 0; 
+            client_count++;
+            return i; // Return the index where the client was added
+        }
+    }
+    return -1; // No empty slot found
+}
+
+void remove_client(struct sockaddr_in client_addr) {
+    for (int i = 0; i < MAX_CLIENT; i++) {
+        // Check if the client's address matches
+        if (clients[i].active && memcmp(&clients[i].client_addr, &client_addr, sizeof(client_addr)) == 0) {
+            clients[i].active = 0; // Mark the client as inactive
+            client_count--;
+            return;
+        }
+    }
+}
 
 int send_message_to_client(int sockfd,char* data, struct sockaddr_in client_addr,int cliaddr_len){
     char buffer[1024];
@@ -32,7 +77,7 @@ int main(int argc,char*argv[],char** envp){
     }
 
     //setting up sensor 
-    int sensorfd = openSerialPort("/dev/ttyUSB0"); // Change to match your port
+    sensorfd = openSerialPort("/dev/ttyUSB0"); // Change to match your port
     if(sensorfd < 0){
         perror("failed opening sensor serial port");
         exit(EXIT_FAILURE);
@@ -75,17 +120,32 @@ int main(int argc,char*argv[],char** envp){
     char sensor_data[1024];
     while (1) {
         memset(buffer_receive,0,sizeof(buffer_receive));
-        // Receive messages from clients.
+        //making receive non-blocking
+        struct timeval timeout;
+        timeout.tv_sec = 0;  // 0 seconds
+        timeout.tv_usec = 100000;  // 100 milliseconds (100000 microseconds)
+
+        if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) < 0) {
+            perror("setsockopt failed");
+        }
+        //waiting only for 100 milliseconds.
         int byte_received = recvfrom(sockfd, buffer_receive, sizeof(buffer_receive), 0, (struct sockaddr *)&client_addr, &cliaddr_len);
         if (byte_received < 0) {
-            perror("recvfrom");
-            break;
+            if (errno == EWOULDBLOCK) {
+                // No data received within the timeout period
+            } else {
+                perror("recvfrom");
+                break;
+            }
+        }else{ //new client connection
+            buffer_receive[byte_received]='\0'; //this is client message
+            printf("client msg:%d\n",atoi(buffer_receive));
+            if(add_client(client_addr)!=-1){
+                printf("client:%s:%d is in active client list\n", inet_ntoa(client_addr.sin_addr),ntohs(client_addr.sin_port));
+            }
         }
-        printf("client:%s:%d\n", inet_ntoa(client_addr.sin_addr),ntohs(client_addr.sin_port));
-        buffer_receive[byte_received]='\0';
-        //should add the client in active client list
 
-        //read sensor data
+        //reading sensor data
         memset(sensor_data,0,sizeof(sensor_data));
         int sensor_read_bytes = read(sensorfd, sensor_data, sizeof(sensor_data));
         if (sensor_read_bytes < 0) {
@@ -93,8 +153,24 @@ int main(int argc,char*argv[],char** envp){
             break;
         }
         sensor_data[sensor_read_bytes]='\0';
-        //sending data to active clients
-        send_message_to_client(sockfd,sensor_data,client_addr,cliaddr_len);
+
+        //should add the client in active client list
+        int clients_removed=0;
+        for(int i = 0; i < client_count; i++){
+            if(send_message_to_client(sockfd,sensor_data,clients[i].client_addr,cliaddr_len)<0){
+                printf("client:%s missed data\n",inet_ntoa(clients[i].client_addr.sin_addr));
+                clients[i].failed_msg_count+=1;
+            }else{ //resetting failed message count
+                clients[i].failed_msg_count=0;
+            }
+            //removing client if failed msg reach threshold
+            if(clients[i].failed_msg_count > FAILED_MSG_THRESHOLD){
+                printf("suspected dead client being removed:%s\n",inet_ntoa(clients[i].client_addr.sin_addr));
+                clients[i].active=0;
+                clients_removed+=1;
+            }
+        }
+        client_count-=clients_removed;
     }
 
     close(sensorfd);
