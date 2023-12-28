@@ -11,7 +11,7 @@
 #include <sys/time.h>
 #include "server_config.h"
 #include "sensors.h"
-#include "../protocols.h"
+
 
 #define MAX_CLIENT 5
 #define FAILED_MSG_THRESHOLD 4
@@ -24,6 +24,13 @@ struct Client {
     int failed_msg_count;
     int active; // Indicates if the client slot is active
 } clients[MAX_CLIENT];
+
+typedef enum request{
+    INIT,
+    CLOSE
+}request_t;
+
+
 
 
 int add_client(struct sockaddr_in new_client_addr) {

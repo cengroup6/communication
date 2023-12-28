@@ -5,9 +5,13 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-#include "../protocols.h"
 
 using namespace std;
+
+typedef enum request{
+    INIT,
+    CLOSE
+}request_t;
 
 
 // request_t parse_requested_data(char* data){

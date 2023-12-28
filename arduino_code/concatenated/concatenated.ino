@@ -1,5 +1,7 @@
-//rotatory
 
+#include "DFRobot_Heartrate.h"
+
+//rotatory
 #define inputCLK 4
 #define inputDT 5
 #define ledCW 8
@@ -22,11 +24,8 @@ unsigned long pulseTime;
 float speedMph;
 
 //heart rate
-const int SENSOR_PIN = 0; //define sensor pin
-unsigned long previousMillis = 0; // will store last time a beat was detected
-const long interval = 5000; // interval at which to count beats (1 second)
-int beatCount = 0; // number of beats detected
-int lastBeatValue = 0; // the last read 
+#define heartratePin A1
+DFRobot_Heartrate heartrate(DIGITAL_MODE); ///< ANALOG_MODE or DIGITAL_MODE
 
 
 
@@ -48,46 +47,26 @@ void setup() {
 
 
 void loop(){
-  reedSensor();
-  rotatory();
-  //heartRate();
+  //reedSensor();
+  //rotatory();
+  heartRate();
+  delay(10);
  
 
 }
 
 
 void heartRate() {
- int sensorValue = analogRead(SENSOR_PIN); // read the value from the sensor
-
-    // Check for a beat
-    if (sensorValue < 950 && lastBeatValue >= 1023) {
-        // A beat is detected
-        beatCount++;
-    }
-    lastBeatValue = sensorValue;
-
-    // Get the current time
-    unsigned long currentMillis = millis();
-
-    // Check if ten seconds have passed; update BPM
-    if (currentMillis - previousMillis >= interval) {
-        // Save the last time you updated the BPM
-        previousMillis = currentMillis;
-
-        // Calculate BPM
-        int bpm = beatCount * 12; // Multiply by 6 to convert to beats per minute
-
-        // Print BPM
-        Serial.print("BPM: ");
-        Serial.println(bpm);
-
-        // Reset beat count
-        beatCount = 0;
-    }
-
-    // Short delay to stabilize
-  
+  uint8_t rateValue;
+  heartrate.getValue(heartratePin); ///< A1 foot sampled values
+  rateValue = heartrate.getRate(); ///< Get heart rate value 
+  if(rateValue)  {
+  	Serial.print("b: ");
+    	Serial.println(rateValue);
+  }
 }
+
+
 
 void reedSensor(){
   if(digitalRead(reed) == 1){
@@ -98,7 +77,7 @@ void reedSensor(){
       lastPulseTime = currentTime;
       speedMph = calculateSpeed(pulseTime);
       if(speedMph < 25.00){
-        Serial.print("Speed: ");
+        Serial.print("s: ");
         Serial.println(speedMph);
       } 
      
@@ -126,12 +105,12 @@ void rotatory() {
       counter--;
       digitalWrite(ledCW, LOW);
       digitalWrite(ledCCW, HIGH);
-      Serial.println("Direction: right");
+      Serial.println("d: right");
     } else {
       counter++;
       digitalWrite(ledCW, HIGH);
       digitalWrite(ledCCW, LOW);
-      Serial.println("Direction: left ");
+      Serial.println("d: left ");
     }
   } 
   previousStateCLK = currentStateCLK;
