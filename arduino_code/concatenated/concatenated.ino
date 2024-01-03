@@ -11,7 +11,7 @@ int counter = 0;
 int currentStateCLK;
 int previousStateCLK; 
 unsigned long lastRotaryInterruptTime = 0;
-const unsigned long debounceDelay = 100; // Adjust this value for better debouncing
+const unsigned long debounceDelay = 0; // Adjust this value for better debouncing
 
 //reed sensor
 #define reed  12 // The Hall sensor's output is connected to analog pin A0
@@ -48,9 +48,9 @@ void setup() {
 
 void loop(){
   //reedSensor();
-  //rotatory();
-  heartRate();
-  delay(10);
+  rotatory();
+  //heartRate();
+  //delay(10);
  
 
 }
@@ -96,22 +96,33 @@ float calculateSpeed(unsigned long timeMillis) {
   return distanceMiles / timeHours; // Speed in mph
 }
 
-void rotatory() { 
-  currentStateCLK = digitalRead(inputCLK);
-  if (currentStateCLK != previousStateCLK && (millis() - lastRotaryInterruptTime) > debounceDelay) {
-    lastRotaryInterruptTime = millis(); // Update the last interrupt time
+void rotatory() {
+    currentStateCLK = digitalRead(inputCLK);
 
-    if (digitalRead(inputDT) != currentStateCLK) { 
-      counter--;
-      digitalWrite(ledCW, LOW);
-      digitalWrite(ledCCW, HIGH);
-      Serial.println("d: right");
-    } else {
-      counter++;
-      digitalWrite(ledCW, HIGH);
-      digitalWrite(ledCCW, LOW);
-      Serial.println("d: left ");
+    if (currentStateCLK != previousStateCLK) {
+        lastRotaryInterruptTime = millis(); // Update the last interrupt time
+
+        if (digitalRead(inputDT) != currentStateCLK) {
+            counter--; // Turned left
+        } else {
+            counter++; // Turned right
+        }
+
+        // Determine the state based on the counter
+        if (counter > 0) {
+            digitalWrite(ledCW, HIGH);
+            digitalWrite(ledCCW, LOW);
+            Serial.println("r: 1");
+        } else if (counter < 0) {
+            digitalWrite(ledCW, LOW);
+            digitalWrite(ledCCW, HIGH);
+            Serial.println("r:-1");
+        } else { // counter == 0
+            digitalWrite(ledCW, LOW);
+            digitalWrite(ledCCW, LOW);
+            Serial.println("r: 0");
+        }
     }
-  } 
-  previousStateCLK = currentStateCLK;
+
+    previousStateCLK = currentStateCLK;
 }
