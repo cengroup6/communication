@@ -2,10 +2,9 @@
 #include "DFRobot_Heartrate.h"
 
 //rotatory
-#define inputCLK 4
-#define inputDT 5
-#define ledCW 8
-#define ledCCW 9
+#define resetPin 2
+#define inputDT 4
+#define inputCLK 6
 
 float rotationStep = 0.1; // Change this value to suit your needs
 float rotationValue = 0; // Cumulative rotation value
@@ -40,13 +39,11 @@ void setup() {
   //reed-sensor
   pinMode(reed,INPUT);
   //rotatory
+  pinMode(resetPin, INPUT_PULLUP);
   pinMode(inputCLK, INPUT);
   pinMode(inputDT, INPUT);
-  pinMode(ledCW, OUTPUT);
-  pinMode(ledCCW, OUTPUT);
   
   Serial.begin(9600);
-  Serial.println("Initializing system");
   previousStateCLK = digitalRead(inputCLK);//rotatory
 } 
 
@@ -55,10 +52,7 @@ void setup() {
 void loop(){
   reedSensor();
   rotatory();
-  //heartRate();
-  //delay(10);
- 
-
+  heartRate();
 }
 
 
@@ -80,7 +74,7 @@ void reedSensor(){
   if(digitalRead(reed) == 1){
     // When the reed sensor is activated
     Serial.print("s: ");
-    Serial.println(.9);  // Send the speed value for forward motion
+    Serial.println(.75);  // Send the speed value for forward motion
     previousMillis = currentMillis;  // Update the last command time
   } else {
     // When the reed sensor is not activated
@@ -110,32 +104,10 @@ void rotatory() {
         Serial.print("r: ");
         Serial.println(rotationValue);
     }
-
     previousStateCLK = currentStateCLK;
+    if (digitalRead(resetPin) == LOW) {
+        // Button is pressed
+        Serial.print("y: ");
+        Serial.println(1);
+    }
 }
-//void rotatory() {
-//    currentStateCLK = digitalRead(inputCLK);
-//
-//    if (currentStateCLK != previousStateCLK) {
-//        lastRotaryInterruptTime = millis(); // Update the last interrupt time
-//
-//        if (digitalRead(inputDT) != currentStateCLK) {
-//            counter--; // Turned left
-//        } else {
-//            counter++; // Turned right
-//        }
-//
-//        // Determine the state based on the counter
-//        if (counter > 0) {;
-//            Serial.print("r: ");
-//            Serial.println(-.6);
-//        } else if (counter < 0) {
-//            Serial.print("r: ");
-//            Serial.println(.4);
-//        } else { // counter == 0
-//            Serial.println("r: 0");
-//        }
-//    }
-//
-//    previousStateCLK = currentStateCLK;
-//}
