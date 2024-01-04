@@ -26,8 +26,8 @@ int main(int argc,char*argv[],char** envp){
     char* server_ip_address;
     char* client_ip_address; 
 
-    if(argc < 4){
-        fprintf(stderr,"USAGE:./server <server_ip> <server_port> <client_ip>\n");
+    if(argc < 3){
+        fprintf(stderr,"USAGE:./server <ip> <server_port>\n");
         exit(1);
     }
 
@@ -41,9 +41,9 @@ int main(int argc,char*argv[],char** envp){
 
     //parsing ip address and server_port
     server_ip_address = argv[1];
-    server_port = atoi(argv[2]);
-    client_ip_address = argv[3];
+    client_ip_address = "192.168.71.121";
     client_port = 54000;
+    server_port = atoi(argv[2]);
 
     //creating server socket
     if((sockfd = socket(AF_INET,SOCK_DGRAM,0)) < 0){
@@ -85,6 +85,17 @@ int main(int argc,char*argv[],char** envp){
     char buffer_receive[1024];
     char sensor_data[1024];
     while (1) {
+        // memset(buffer_receive,0,sizeof(buffer_receive));
+        // // Receive messages from clients.
+        // int byte_received = recvfrom(sockfd, buffer_receive, sizeof(buffer_receive), 0, (struct sockaddr *)&client_addr, &cliaddr_len);
+        // if (byte_received < 0) {
+        //     perror("recvfrom");
+        //     break;
+        // }
+        // buffer_receive[byte_received]='\0';
+        // printf("client:%s:%d says:%s\n", inet_ntoa(client_addr.sin_addr),ntohs(client_addr.sin_port),buffer_receive);
+     
+
         //read sensor data
         memset(sensor_data,0,sizeof(sensor_data));
         int sensor_read_bytes = read(sensorfd, sensor_data, sizeof(sensor_data));

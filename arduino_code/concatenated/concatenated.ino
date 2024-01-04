@@ -7,6 +7,10 @@
 #define ledCW 8
 #define ledCCW 9
 
+float rotationStep = 0.1; // Change this value to suit your needs
+float rotationValue = 0; // Cumulative rotation value
+
+
 int counter = 0; 
 int currentStateCLK;
 int previousStateCLK; 
@@ -15,9 +19,9 @@ const unsigned long debounceDelay = 0; // Adjust this value for better debouncin
 
 //reed sensor
 #define reed  12 // The Hall sensor's output is connected to analog pin A0
-const int ledPin = 13;  // Use the built-in LED to indicate a magnetic field detection
-const int threshold = 520; // Set the threshold for detection to mid-range of analog input
-const float wheelCircumference = 2.0; // Wheel circumference in meters
+unsigned long previousMillis = 0; // Stores the last time a command was sent
+const long interval = 500;       // Interval at which to send command (2000 milliseconds = 2 seconds)
+
 
 unsigned long lastPulseTime = 0;
 unsigned long pulseTime;
@@ -31,8 +35,9 @@ DFRobot_Heartrate heartrate(DIGITAL_MODE); ///< ANALOG_MODE or DIGITAL_MODE
 
 void setup() { 
 
-  //hall-effect
-  pinMode(ledPin, OUTPUT);
+  
+
+  //reed-sensor
   pinMode(reed,INPUT);
   //rotatory
   pinMode(inputCLK, INPUT);
@@ -41,13 +46,14 @@ void setup() {
   pinMode(ledCCW, OUTPUT);
   
   Serial.begin(9600);
+  Serial.println("Initializing system");
   previousStateCLK = digitalRead(inputCLK);//rotatory
 } 
 
 
 
 void loop(){
-  //reedSensor();
+  reedSensor();
   rotatory();
   //heartRate();
   //delay(10);
@@ -69,32 +75,24 @@ void heartRate() {
 
 
 void reedSensor(){
+  unsigned long currentMillis = millis();
+
   if(digitalRead(reed) == 1){
-    digitalWrite(ledPin,HIGH);
-    unsigned long currentTime = millis();
-    if (currentTime - lastPulseTime > 50) { // Debounce for 50 ms
-      pulseTime = currentTime - lastPulseTime;
-      lastPulseTime = currentTime;
-      speedMph = calculateSpeed(pulseTime);
-      if(speedMph < 25.00){
-        Serial.print("s: ");
-        Serial.println(speedMph);
-      } 
-     
+    // When the reed sensor is activated
+    Serial.print("s: ");
+    Serial.println(.9);  // Send the speed value for forward motion
+    previousMillis = currentMillis;  // Update the last command time
+  } else {
+    // When the reed sensor is not activated
+    if (currentMillis - previousMillis >= interval) {
+      // If 2 seconds have passed
+      Serial.print("s: ");
+      Serial.println(0);   // Send 0 to indicate stopping or slowing down
+      previousMillis = currentMillis; // Update the last command time
     }
-  }else{
-    digitalWrite(ledPin,LOW);  
   }
-  
 }
 
-
-
-float calculateSpeed(unsigned long timeMillis) {
-  float distanceMiles = wheelCircumference / 1000.0 / 1.609; // Convert meters to miles
-  float timeHours = timeMillis / 1000.0 / 3600.0; // Convert milliseconds to hours
-  return distanceMiles / timeHours; // Speed in mph
-}
 
 void rotatory() {
     currentStateCLK = digitalRead(inputCLK);
@@ -103,26 +101,41 @@ void rotatory() {
         lastRotaryInterruptTime = millis(); // Update the last interrupt time
 
         if (digitalRead(inputDT) != currentStateCLK) {
-            counter--; // Turned left
+            rotationValue += rotationStep; // Turned left
         } else {
-            counter++; // Turned right
+            rotationValue -= rotationStep; // Turned right
         }
 
-        // Determine the state based on the counter
-        if (counter > 0) {
-            digitalWrite(ledCW, HIGH);
-            digitalWrite(ledCCW, LOW);
-            Serial.println("r: 1");
-        } else if (counter < 0) {
-            digitalWrite(ledCW, LOW);
-            digitalWrite(ledCCW, HIGH);
-            Serial.println("r:-1");
-        } else { // counter == 0
-            digitalWrite(ledCW, LOW);
-            digitalWrite(ledCCW, LOW);
-            Serial.println("r: 0");
-        }
+        // Send the cumulative rotation value
+        Serial.print("r: ");
+        Serial.println(rotationValue);
     }
 
     previousStateCLK = currentStateCLK;
 }
+//void rotatory() {
+//    currentStateCLK = digitalRead(inputCLK);
+//
+//    if (currentStateCLK != previousStateCLK) {
+//        lastRotaryInterruptTime = millis(); // Update the last interrupt time
+//
+//        if (digitalRead(inputDT) != currentStateCLK) {
+//            counter--; // Turned left
+//        } else {
+//            counter++; // Turned right
+//        }
+//
+//        // Determine the state based on the counter
+//        if (counter > 0) {;
+//            Serial.print("r: ");
+//            Serial.println(-.6);
+//        } else if (counter < 0) {
+//            Serial.print("r: ");
+//            Serial.println(.4);
+//        } else { // counter == 0
+//            Serial.println("r: 0");
+//        }
+//    }
+//
+//    previousStateCLK = currentStateCLK;
+//}
