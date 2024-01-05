@@ -55,3 +55,36 @@ void readRotary( ) { /* function readRotary */
   }
   swLast = swState;
 }
+
+
+//modify this for 12th
+// void rotatory() {
+//     currentStateCLK = digitalRead(inputCLK);
+
+//     if (currentStateCLK != previousStateCLK && (millis() - lastRotaryInterruptTime) > debounceDelay) {
+//         lastRotaryInterruptTime = millis(); // Update the last interrupt time
+
+//         if (digitalRead(inputDT) != currentStateCLK) {
+//             counter--; // Turned left
+//         } else {
+//             counter++; // Turned right
+//         }
+
+//         // Determine the state based on the counter
+//         if (counter > 0) {
+//             digitalWrite(ledCW, HIGH);
+//             digitalWrite(ledCCW, LOW);
+//             Serial.println("r: 1");
+//         } else if (counter < 0) {
+//             digitalWrite(ledCW, LOW);
+//             digitalWrite(ledCCW, HIGH);
+//             Serial.println("r:-1");
+//         } else { // counter == 0
+//             digitalWrite(ledCW, LOW);
+//             digitalWrite(ledCCW, LOW);
+//             Serial.println("r: 0");
+//         }
+//     }
+
+//     previousStateCLK = currentStateCLK;
+// }
