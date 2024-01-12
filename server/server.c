@@ -8,7 +8,6 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
-#include "server_config.h"
 #include "sensors.h"
 
 
@@ -34,8 +33,11 @@ int main(int argc,char*argv[],char** envp){
     //setting up sensor 
     int sensorfd = openSerialPort("/dev/ttyUSB0"); // Change to match your server_port
     if(sensorfd < 0){
-        perror("failed opening sensor serial server_port");
-        exit(EXIT_FAILURE);
+        sensorfd = openSerialPort("/dev/ttyUSB1"); // Change to match your server_port
+        if(sensorfd < 0){
+            perror("failed opening sensor serial server_port");
+            exit(EXIT_FAILURE);
+        }
     }
     configureSerialPort(sensorfd);
 
